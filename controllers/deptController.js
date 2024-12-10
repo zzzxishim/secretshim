@@ -15,7 +15,7 @@ const getAllDepartments = async (req, res) => {
 const getDepartmentById = async (req, res) => {
   const { id } = req.params;
   try {
-    const [row] = await pool.query('SELECT departments_id, fullname, username, created_at, updated_at FROM departments WHERE department_id = ?', [id]);
+    const [row] = await pool.query('SELECT dept_id, fullname, username, created_at, updated_at FROM departments WHERE department_id = ?', [id]);
     if (row.length === 0) {
       return res.status(404).json({ error: 'Department not found' });
     }
@@ -31,7 +31,7 @@ const createDepartment = async (req, res) => {
 
   
   if (!fullname || !username || !password) {
-    return res.status(400).json({ error: 'Fullname, username, and password are required' });
+    return res.status(400).json({ error: 'fullname, username, and password are required' });
   }
 
   try {
@@ -58,7 +58,7 @@ const updateDepartment= async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    const [result] = await pool.query('UPDATE departments SET fullname = ?, username = ?, password = ? WHERE department_id = ?', [fullname, username, hashedPassword, id]);
+    const [result] = await pool.query('UPDATE departments SET fullname = ?, username = ?, password = ? WHERE dept_id = ?', [fullname, username, hashedPassword, id]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Department not found' });
@@ -74,7 +74,7 @@ const updateDepartment= async (req, res) => {
 const deleteDepartment= async (req, res) => {
   const { id } = req.params;
   try {
-    const [result] = await pool.query('DELETE FROM departments WHERE department_id = ?', [id]);
+    const [result] = await pool.query('DELETE FROM departments WHERE dept_id = ?', [id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Department not found' });
