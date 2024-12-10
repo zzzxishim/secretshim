@@ -1,89 +1,93 @@
 const pool = require('../config/database');
-const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-
-const getAllCourses = async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT department_id, fullname, username, created_at, updated_at FROM departments');
-    res.json(rows);
-  } catch (error) {
-    res.status(500).json({ error: `Failed to retrieve departments: ${error.message}` });
-  }
-};
-
+const getAllcourses = async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM courses');
+        res.json(rows);
+    }catch (err) {
+        res.status(500).json({ error : err.message });
+    }
+}
 
 const getCourseById = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [row] = await pool.query('SELECT department_id, fullname, username, created_at, updated_at FROM departments WHERE user_id = ?', [id]);
-    if (row.length === 0) {
-      return res.status(404).json({ error: 'department not found' });
+    const { id } = req.params;
+    try {
+        const [rows] = await pool.query('SELECT * FROM departments WHERE course_id = ?', [id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Course not found '});
+        }
+        res.json(rows[0]);
+    }catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    res.json(row[0]);
-  } catch (error) {
-    res.status(500).json({ error: `Failed to retrieve department: ${error.message}` });
-  }
 };
 
-
 const createCourse = async (req, res) => {
-  const { fullname, username, password } = req.body;
+    const { course_code, course_name, user_id, dept_id } = req.body; 
 
-  
-  if (!fullname || !username || !password) {
-    return res.status(400).json({ error: 'Fullname, username, and password are required' });
-  }
+    
+    const [userRows] = await pool.query('SELECT user_id FROM users WHERE user_id = ?', [user_id]);
+    if (userRows.length === 0) {
+        return res.status(400).json({ error: 'Invalid user_id, user does not exist' });
+    }
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
-    await pool.query('INSERT INTO departments (fullname, username, password) VALUES (?, ?, ?)', [fullname, username, hashedPassword]);
-    res.status(201).json({ message: 'Department created successfully' });
-  } catch (error) {
-    res.status(500).json({ error: `Failed to create department: ${error.message}` });
-  }
+    const [deptRows] = await pool.query('SELECT dept_id FROM departments WHERE dept_id = ?', [dept_id]);
+    if (deptRows.length === 0) {
+        return res.status(400).json({ error: 'Invalid dept_id, department does not exist' });
+    }
+
+    try {
+        const [result] = await pool.query(
+            'INSERT INTO courses (course_code, course_name, user_id, dept_id) VALUES (?, ?, ?, ?)', 
+            [course_code, course_name, user_id, dept_id] // Ensure proper variable names here
+        );
+        res.status(201).json({ message: 'Course created successfully', courseId: result.insertId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 };
 
 
 const updateCourse = async (req, res) => {
-  const { id } = req.params;
-  const { fullname, username, password } = req.body;
+    const { id } = req.params;
+    const { course_code, course_name, user_id, dept_id } = req.body;
+    try {
+        const [result] = await pool.query(
+            'UPDATE courses SET course_code = ?, course_name = ?, user_id = ?, dept_id = ? WHERE course_id = ?', 
+            [course_code, course_name, user_id, dept_id, id]
+        );
 
-  if (!fullname || !username || !password) {
-    return res.status(400).json({ error: 'Fullname, username, and password are required' });
-  }
+        console.log(`Affected rows: ${result.affectedRows}`);
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    
-    const [result] = await pool.query('UPDATE courses SET fullname = ?, username = ?, password = ? WHERE course_id = ?', [fullname, username, hashedPassword, id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Course not found' });
+        res.json({ message: 'Course updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    
-    res.json({ message: 'Course updated successfully' });
-  } catch (error) {
-    res.status(500).json({ error: `Failed to update course: ${error.message}` });
-  }
 };
+
+
 
 
 const deleteCourse = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [result] = await pool.query('DELETE FROM courses WHERE course_id = ?', [id]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Course not found' });
+    const { id } = req.params;
+
+    try {
+        const [result] = await pool.query('DELETE FROM courses WHERE course_id = ?', [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Course not found' });
+        }
+
+        res.json({ message: 'Course deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-    
-    res.json({ message: 'Course deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: `Failed to delete Course: ${error.message}` });
-  }
 };
 
-module.exports = { getAllCourses, getCourseById, createCourse, updateCourse, deleteCourse };
+module.exports = {getAllcourses, getCourseById, createCourse, updateCourse, deleteCourse};
